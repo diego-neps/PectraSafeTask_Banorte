@@ -224,6 +224,7 @@
     <Compile Include="Helpers\TypeConverter.cs" />
     <Compile Include="Models\BaseApiRequest.cs" />
     <Compile Include="Models\Conditions.cs" />
+    <Compile Include="Models\FormulariosRegistrados\FormData.cs" />
     <Compile Include="Models\PectraAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Provider\AuthenticationMiddleware.cs" />
