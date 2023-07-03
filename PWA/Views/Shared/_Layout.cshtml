@@ -1,0 +1,58 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="theme-color" content="#4285f4" />
+    <title>@Resources.Resource.PageTitle</title>
+    <link href="~/manifest.json" rel="manifest">
+    <link href="~/Content/bootstrap.min.css" rel="stylesheet">
+    <link href="~/Content/mdb.min.css" rel="stylesheet">
+    <link href="~/Content/font-awesome.min.css" rel="stylesheet">
+    <link href="~/Content/toastr.min.css" rel="stylesheet" />
+    <link href="~/Content/style.css" rel="stylesheet">
+    <link href="~/img/icons/icon-ios-192x192.png" rel="apple-touch-icon">
+    <link rel='shortcut icon' type='image/x-icon' href='~/favicon.ico' />
+</head>
+<body>
+    <div id="divLayout">
+        <div class="flex-center flex-column">
+            @RenderBody()
+        </div>
+    </div>
+    <script>
+        /* Global */
+        const CONST_ApiUrl = '@System.Web.Configuration.WebConfigurationManager.AppSettings["ApiUrl"]';
+        const CONST_PngId = '@System.Web.Configuration.WebConfigurationManager.AppSettings["PngId"]';
+        const CONST_VersionId = '@System.Web.Configuration.WebConfigurationManager.AppSettings["VersionId"]';
+        const CONST_NotificationDefaultOptions = { timeOut: 3500, progressBar: true, showDuration: 500, hideDuration: 500, showMethod: "slideDown", hideMethod: "slideUp", positionClass: "toast-top-center" };
+        const CONST_AccessTokenKey = 'AccessToken';
+        const CONST_UserData = 'UserData';
+        const CONST_UserName = 'UserName';
+        const CONST_AppKey = '$P4SSW0RD_2018i';
+        const CONST_PWAConnectorType = 'PectraMobile';
+        const CONST_ActivityEndPendingKey = 'ActivityEndPending-';
+        const CONST_InstanceData = "InstanceData";
+        const CONST_ActivityData = "ActivityData";
+        const CONST_OrgUoProf = 'OrgUoProfData';
+        const CONST_ShowSuccess = 'showSuccess';
+        const CONST_ShowError = 'showError';
+        const CONST_ShowAlertPendingActivityEnd = 'showAlertPendingActivityEnd';
+        const CONST_ShowRequiredNetworkFirstTime = 'showRequiredNetworkFirstTime';
+        const CONST_ShowRequiredNetworkAlways = 'showRequiredNetworkAlways';
+        const CONST_AlertRequiredNetworkFirstTime = '@Resources.Resource.alertRequiredNetworkFirstTimeBody';
+        const CONST_AlertWarningNotNetworkForm = '@Resources.Resource.alertWarningNotNetworkFormBody';
+        const CONST_AlertErrorBody = '@Resources.Resource.alertErrorBody';
+    </script>
+    <script type="text/javascript" src="~/Scripts/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="~/Scripts/popper.min.js"></script>
+    <script type="text/javascript" src="~/Scripts/bootstrap.min.js"></script>
+    <script type="text/javascript" src="~/Scripts/bootstrap-waitingfor.min.js"></script>
+    <script type="text/javascript" src="~/Scripts/mdb.min.js"></script>
+    <script type="text/javascript" src="~/Scripts/toastr.min.js"></script>
+    <script type="text/javascript" src="~/Scripts/cryptojs.js"></script>
+    <script type="text/javascript" src="~/Scripts/app.js"></script>
+    @RenderSection("script", false)
+</body>
+</html>

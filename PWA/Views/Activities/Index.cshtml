@@ -1,0 +1,506 @@
+﻿@section script {
+    <script>
+        var divLogout = $('#divLogout');
+        var divContainer = $('#divContainer');
+        var bSentFirstPending = false;
+
+        // si por algun motivo existen datos previos de una instancia, se elimina ya que no se puede reutilizar un trxid (por ejemplo)
+        var instanceData = sessionStorage.getItem(CONST_InstanceData);
+        if (instanceData != null) {
+            sessionStorage.removeItem(CONST_InstanceData);
+        }
+        // si por algun motivo existen datos previos de una inbox se elimina
+        var activityData = sessionStorage.getItem(CONST_ActivityData);
+        if (activityData != null) {
+            sessionStorage.removeItem(CONST_ActivityData);
+        }
+
+        $(document).ready(function () {
+            divContainer.html('');
+            var _usrName = '';
+            // visualiza nombre de usuario
+            var userName = localStorage.getItem(CONST_UserName);
+            if (userName != null) {
+                _usrName = userName;
+            }
+
+
+            $("#menu-left").mmenu({
+                //extensions: ["position-front"],
+                extensions: ["position-front", ""],
+                navbar: { title: "Organización, UO y Perfil" }
+            });
+
+            $("#menu-right").mmenu({
+                //extensions: ["position-front"],
+                extensions: ["position-front", "position-right"],
+                navbar: { title: _usrName }
+            });
+
+            // valida que existan configurados datos del proceso
+            if ($.isNumeric(CONST_PngId) == false) {
+                toastr.options.progressBar = false;
+                toastr.options.timeOut = 0;
+                toastr.options.positionClass = "toast-top-center";
+                toastr.error('@Resources.Resource.alertErrorPngIdConfig', '');
+
+                return;
+            }
+
+            // show waiting
+            waitingDialog.show('@Resources.Resource.WaitingMessage', {
+                onShow: function (dialog) {
+                    getOrgUoProfAsync();
+                }
+            });
+
+            $(".modal-backdrop").hide();
+        });
+
+        // try to get new trxid and launch the form
+        function launchForm(sender) {
+            instanceData = new Object();
+            instanceData.OrgId = sender.getAttribute('orgid');
+            instanceData.UoId = sender.getAttribute('uoid');
+            instanceData.ProfId = sender.getAttribute('profid');
+            instanceData.PngId = sender.getAttribute('pngid');
+            instanceData.VersionId = sender.getAttribute('versionid');
+            instanceData.FunctionId = sender.getAttribute('functionid');
+            instanceData.ActId = sender.getAttribute('actid');
+            instanceData.SubProId = sender.getAttribute('subproid');
+            instanceData.InsId = 0; //se trata de una actividad inicial
+
+            waitingDialog.show('@Resources.Resource.WaitingMessage', {
+                onShow: function (dialog) {
+                    // get function data and trxid to redirect
+                    redirectToFormAsync(instanceData);
+                }
+            });
+        }
+
+        // launch the inbox
+        function launchInbox(sender) {
+            activityData = new Object();
+            activityData.OrgId = sender.getAttribute('orgid');
+            activityData.UoId = sender.getAttribute('uoid');
+            activityData.ProfId = sender.getAttribute('profid');
+            activityData.PngId = sender.getAttribute('pngid');
+            activityData.VersionId = sender.getAttribute('versionid');
+            activityData.FunctionId = sender.getAttribute('functionid');
+            activityData.ActId = sender.getAttribute('actid');
+            activityData.SubProId = sender.getAttribute('subproid');
+            activityData.Description = sender.getAttribute('menuitemdescription');
+            activityData.Key = sender.getAttribute('key');
+
+            // save the activity data (temporarily)
+            sessionStorage.setItem(CONST_ActivityData, JSON.stringify(activityData));
+
+            // redirect
+            window.location.href = 'Inbox';
+        }
+
+        // Intenta enviar los activity end pendientes (siempre y cuando existan y haya conexion)
+        function sendPendingActivityEndBackground() {
+            if (navigator.onLine) {
+                $.each(window.localStorage, function (key, value) {
+                    if (key.indexOf(CONST_ActivityEndPendingKey) > -1) {
+                        // call service
+                        sendPendingActivityEndAsync(key, value);
+                    }
+                });
+            }
+        }
+
+        function showLogoutDialog() {
+            var notificationDefaultOptions = new Object();
+            notificationDefaultOptions.preventDuplicates = true;
+            notificationDefaultOptions.timeOut = 0;
+            notificationDefaultOptions.tapToDismiss = false;
+            notificationDefaultOptions.progressBar = false;
+            notificationDefaultOptions.closeButton = true;
+            notificationDefaultOptions.hideDuration = 0;
+            notificationDefaultOptions.positionClass = "toast-top-center";
+
+            toastr.warning('@Resources.Resource.alertConfirmLogout' + '<br /><button type="button" class="btn btn-outline-white btn-sm" onclick="logout();">@Resources.Resource.alertConfirmLogoutYes</button>', '', notificationDefaultOptions);
+        }
+
+        function getMenuItemsRecursive(pObject, pMenuItems) {
+            for (var property in pObject) {
+                if (pObject.hasOwnProperty(property)) {
+                    if (typeof pObject[property] == "object") {
+                        if (property == 'MenuItems')
+                            pMenuItems.push(pObject);
+
+                        getMenuItemsRecursive(pObject[property], pMenuItems);
+                    } else {
+                        //found a property which is not an object, check for your conditions here
+                    }
+                }
+            }
+        }
+
+        // Intenta enviar ActivityEnd pendientes
+        sendPendingActivityEndBackground();
+
+        /* Api Calls */
+        function getBusinessProcessesAsync(OrgId, UoId, ProfId) {
+            $("#menu-left").data("mmenu").close($("#menu-list-left"));
+            $("#pSinPerfil").hide();
+            var OrgUoProf = new Object();
+            OrgUoProf.OrgId = OrgId;
+            OrgUoProf.UoId = UoId;
+            OrgUoProf.ProfId = ProfId;
+
+            localStorage.removeItem(CONST_OrgUoProf);
+            localStorage.setItem(CONST_OrgUoProf, JSON.stringify(OrgUoProf));
+
+            waitingDialog.show('@Resources.Resource.WaitingMessage', {
+                onShow: function (dialog) {
+                    var OrgUoProf = JSON.parse(localStorage.getItem(CONST_OrgUoProf));
+                    // get function data and trxid to redirect
+                    $.ajax({
+                        url: CONST_ApiUrl + '/Pectra/GetTreeView?PngId=' + CONST_PngId + '&OrgId=' + OrgUoProf.OrgId + '&UoId=' + OrgUoProf.UoId + '&ProfId=' + OrgUoProf.ProfId,
+                        type: 'GET',
+                        beforeSend: function (xhr) {
+                            xhr.setRequestHeader('Authorization', 'Bearer ' + getAccessToken());
+                        },
+                        success: function (data) {
+                            // render response
+                            if (data != null && data.length > 0) {
+                                var htmlBusinessProcesses = '';
+                                var bpStyle = '';
+                                var htmlMenuItems = '';
+                                var businessProcess = data[0];
+
+                                if (businessProcess != null) {
+                                    var aMenuItems = [];
+
+                                    // get all menu items in a list
+                                    getMenuItemsRecursive(businessProcess, aMenuItems);
+
+                                    // recorre cada menu item que tiene conectores asignados unicamente, es decir que se trata de actividades
+                                    if (aMenuItems != null) {
+                                        for (var i = 0; i < aMenuItems.length; i++) {
+                                            var menuItem = aMenuItems[i];
+
+                                            // verifica el tipo de actividad (Type 0 => inicial, Type 1 => actividad normal, Type 3 => punto de accion)
+                                            if (menuItem.Type == 0 || menuItem.Type == 1) {
+                                                var faIcon = '';
+                                                var onclickDefinition = '';
+                                                var oBusinessProcessProperties = menuItem.BusinessProcessProperties;
+
+                                                switch (menuItem.Type) {
+                                                    case 0:
+                                                        faIcon = 'fa-play';
+                                                        onclickDefinition = 'launchForm(this);'
+                                                        break;
+                                                    case 1:
+                                                        faIcon = 'fa-list-alt';
+                                                        onclickDefinition = 'launchInbox(this);'
+                                                        break;
+                                                }
+
+                                                if (oBusinessProcessProperties != null) {
+                                                    if (oBusinessProcessProperties.Functions != null) {
+                                                        for (var j = 0; j < oBusinessProcessProperties.Functions.length; j++) {
+                                                            var oFunction = oBusinessProcessProperties.Functions[j];
+
+                                                            // verifica si se trata de un conector compatible con pwa
+                                                            if (oFunction.TypeId == CONST_PWAConnectorType) {
+                                                                htmlMenuItems +=
+                                                                    '<a onclick="' + onclickDefinition + '" class="list-group-item list-group-item-custom d-flex justify-content-between"' +
+                                                                            ' pngid="' + businessProcess.PngId + '" versionid="' + businessProcess.VersionId + '"' +
+                                                                            ' functionid="' + oFunction.Id + '" actid="' + oBusinessProcessProperties.ActId + '"' +
+                                                                            ' subproid="' + oBusinessProcessProperties.SubProId + '" menuitemdescription="' + menuItem.Description + '"' +
+                                                                            ' key="' + menuItem.Key + '" orgid="' + OrgUoProf.OrgId + '" uoid="' + OrgUoProf.UoId + '" profid="' + OrgUoProf.ProfId + '">' +
+                                                                        '<span>' + menuItem.Description + '</span>' +
+                                                                        '<span>' +
+                                                                            '<i class="fa ' + faIcon + ' fa-color ml-2"></i>' +
+                                                                        '</span>' +
+                                                                    '</a>';
+
+                                                                // abandona el For al encontrar el primer conector
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (htmlBusinessProcesses != '')
+                                        bpStyle = 'business-process-group';
+
+                                    // arma el business process
+                                    htmlBusinessProcesses +=
+                                        '<div class="modal-dialog cascading-modal ' + bpStyle + '">' +
+                                            '<div class="modal-content">' +
+                                                '<div class="modal-header primary-color white-text">' +
+                                                    '<h4 class="title">' +
+                                                       '<i class="fa fa-user" style="margin:5px"></i>' + OrgUoProf.ProfId +
+                                                    '</h4>' +
+                                                '</div>' +
+                                                '<div class="modal-body">' +
+                                                    '<div class="list-group mb-3">' +
+                                                        htmlMenuItems +
+                                                    '</div>' +
+                                                '</div>' +
+                                            '</div>' +
+                                        '</div>';
+
+                                    // add all business processes
+                                    divContainer.html(htmlBusinessProcesses);
+
+                                    $('#activityTitle').text(businessProcess.Description)
+                                }
+                            }
+
+                            else {
+                                divContainer.html('<center><h5 class="inbox-empty">@Resources.Resource.lblActivitiesEmpty</h5></center>');
+                            }
+
+                            // muestra un mensaje de exito si el activityend de un formulario/conector se realizo correctamente
+                            var showSuccess = sessionStorage.getItem(CONST_ShowSuccess);
+                            if (showSuccess != null) {
+                                if (showSuccess == 'true') {
+                                    toastr.success('@Resources.Resource.alertSuccessActivityEndBody', '', CONST_NotificationDefaultOptions);
+                                }
+                                sessionStorage.removeItem(CONST_ShowSuccess);
+                            }
+
+                            // muestra un mensaje de "operacion pendiente" si el activityend de un formulario/conector no se pudo completar por falta de conexion a internet
+                            var showAlertPendingActivityEnd = sessionStorage.getItem(CONST_ShowAlertPendingActivityEnd);
+                            if (showAlertPendingActivityEnd != null) {
+                                if (showAlertPendingActivityEnd == 'true') {
+                                    toastr.info('@Resources.Resource.alertPendingActivityEndBody', '', CONST_NotificationDefaultOptions);
+                                }
+                                sessionStorage.removeItem(CONST_ShowAlertPendingActivityEnd);
+                            }
+
+                            // muestra un mensaje de error informando que se requiere conexion la primera vez que se desea ejecutar una actividad
+                            var showRequiredNetworkFirstTime = sessionStorage.getItem(CONST_ShowRequiredNetworkFirstTime);
+                            if (showRequiredNetworkFirstTime != null) {
+                                if (showRequiredNetworkFirstTime == 'true') {
+                                    toastr.error(CONST_AlertRequiredNetworkFirstTime, '', CONST_NotificationDefaultOptions);
+                                }
+                                sessionStorage.removeItem(CONST_ShowRequiredNetworkFirstTime);
+                            }
+
+                            // muestra un mensaje de error informando que se requiere conexion siempre
+                            var showRequiredNetworkAlways = sessionStorage.getItem(CONST_ShowRequiredNetworkAlways);
+                            if (showRequiredNetworkAlways != null) {
+                                if (showRequiredNetworkAlways == 'true') {
+                                    toastr.error(CONST_AlertWarningNotNetworkForm, '', CONST_NotificationDefaultOptions);
+                                }
+                                sessionStorage.removeItem(CONST_ShowRequiredNetworkAlways);
+                            }
+
+                            // muestra un mensaje de error generico (por ejemplo producido por un error 500 internal server error)
+                            var showError = sessionStorage.getItem(CONST_ShowError);
+                            if (showError != null) {
+                                if (showError == 'true') {
+                                    toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                                }
+                                sessionStorage.removeItem(showError);
+                            }
+                        },
+                        error: function (jqXHR, textStatus, errorThrown) {
+                            switch (jqXHR.status) {
+                                case 401:
+                                    // significa que el token actual ha caducado. Obtiene un nuevo token valido y rehace la llamada a la api
+                                    loginAsync(null).then(function (statusCode) {
+                                        if (statusCode == 200) {
+                                            getBusinessProcessesAsync(OrgUoProf.OrgId, OrgUoProf.UoId, OrgUoProf.ProfId);
+                                        }
+                                        else {
+                                            // show error
+                                            toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                                        }
+                                    });
+
+                                    break;
+                                default:
+                                    // show error
+                                    toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                                    break;
+                            }
+                        }
+                    }).always(function () {
+                        waitingDialog.hide();
+                        divLogout.show();
+                    });
+                }
+            });
+        }
+
+        function sendPendingActivityEndAsync(key, value) {
+            // llama al servicio
+            postFormAsync(value).then(function (statusCode) {
+                switch (statusCode) {
+                    case 200:
+                        // remove from localstorage
+                        localStorage.removeItem(key);
+
+                        // informa al usuario
+                        if (bSentFirstPending == false) {
+                            bSentFirstPending = true;
+                            toastr.success('@Resources.Resource.alertSuccessActivityEndPending', '', CONST_NotificationDefaultOptions);
+                        }
+
+                        break;
+                    case 401:
+                        // significa que el token actual ha caducado. Obtiene un nuevo token valido y rehace la llamada a la api
+                        loginAsync(null).then(function (statusCode) {
+                            if (statusCode == 200) {
+                                sendPendingActivityEndAsync(key, value);
+                            }
+                        });
+
+                        break;
+                }
+            });
+        }
+
+        function getOrgUoProfAsync() {
+            $.ajax({
+                url: CONST_ApiUrl + '/Pectra/GetOrgUoProf?PngId=' + CONST_PngId + '&VersionId=' + CONST_VersionId,
+                type: 'GET',
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader('Authorization', 'Bearer ' + getAccessToken());
+                },
+                success: function (data) {
+                    // render response
+                    if (data != null && data.length > 0) {
+                        var OrgUoProfFirst = null;
+                        for (var i = 0; i < data.length; i++) {
+                            var orgDesc = data[i].Organization.Description;
+                            var orgId = data[i].Organization.Id;
+
+                            var liOrg = '<li>' +
+                                            '<span>' + orgDesc + ' [' + orgId + ']</span>' +
+                                            '<ul id="org_' + orgId + '"></ul>' +
+                                        '</li>';
+                            $("#menu-list-left").find(".mm-listview").append(liOrg);
+                            for (var j = 0; j < data[i].OperationalUnits.length; j++) {
+                                var uoDesc = data[i].OperationalUnits[j].OperationalUnit.Description;
+                                var uoId = data[i].OperationalUnits[j].OperationalUnit.Id;
+
+                                var liUo = '<li>' +
+                                            '<span>' + uoDesc + ' [' + uoId + ']</span>' +
+                                            '<ul id="org_uo_' + orgId + '_' + uoId + '"></ul>' +
+                                        '</li>';
+                                $("#org_" + orgId).append(liUo);
+                                for (var k = 0; k < data[i].OperationalUnits[j].Profiles.length; k++) {
+                                    var profDesc = data[i].OperationalUnits[j].Profiles[k].Profile.Description;
+                                    var profId = data[i].OperationalUnits[j].Profiles[k].Profile.Id;
+
+                                    var liProf = '<li id="prof_' + profId + '">' +
+                                                    '<a href="#' + orgId + '/' + uoId + '/' + profId + '" onclick="getBusinessProcessesAsync(\'' + orgId + '\', \'' + uoId + '\', \'' + profId + '\');return false;">' + profDesc + ' </a>' +
+                                                '</li>';
+                                    $("#org_uo_" + orgId + "_" + uoId).append(liProf);
+
+                                    if (OrgUoProfFirst == null) {
+                                        OrgUoProfFirst = new Object();
+                                        OrgUoProfFirst.OrgId = orgId;
+                                        OrgUoProfFirst.UoId = uoId;
+                                        OrgUoProfFirst.ProfId = profId;
+                                    }
+
+                                    if (data[i].OperationalUnits[j].Profiles[k].Default) {
+                                        var OrgUoProf = localStorage.getItem(CONST_OrgUoProf);
+                                        if (OrgUoProf == null) {
+                                            OrgUoProf = new Object();
+                                            OrgUoProf.OrgId = orgId;
+                                            OrgUoProf.UoId = uoId;
+                                            OrgUoProf.ProfId = profId;
+                                            localStorage.removeItem(CONST_OrgUoProf);
+                                            localStorage.setItem(CONST_OrgUoProf, JSON.stringify(OrgUoProf));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        $("#menu-left").data("mmenu").initPanels($("#menu-list-left"));
+
+                        var OrgUoProf = localStorage.getItem(CONST_OrgUoProf);
+                        if (OrgUoProf != null) {
+                            var obj = JSON.parse(OrgUoProf);
+                            getBusinessProcessesAsync(obj.OrgId, obj.UoId, obj.ProfId);
+                        }
+                        else if (OrgUoProfFirst !== null) {
+                            localStorage.setItem(CONST_OrgUoProf, JSON.stringify(OrgUoProfFirst));
+                            getBusinessProcessesAsync(OrgUoProfFirst.OrgId, OrgUoProfFirst.UoId, OrgUoProfFirst.ProfId);
+                        } else {
+                            $("#pSinPerfil").show();
+                        }
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    switch (jqXHR.status) {
+                        case 401:
+                            // significa que el token actual ha caducado. Obtiene un nuevo token valido y rehace la llamada a la api
+                            loginAsync(null).then(function (statusCode) {
+                                if (statusCode == 200) {
+                                    getOrgUoProfAsync();
+                                }
+                                else {
+                                    // show error
+                                    toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                                }
+                            });
+
+                            break;
+                        default:
+                            // show error
+                            toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                            break;
+                    }
+                }
+            }).always(function () {
+                waitingDialog.hide();
+                divLogout.show();
+            });;
+        }
+
+    </script>
+
+    <!--mmenu-->
+    <script type="text/javascript" src="~/Scripts/jquery.mmenu.js"></script>
+    <link href="~/Content/jquery.mmenu.css" rel="stylesheet" />
+    <link href="~/Content/jquery.mmenu.positioning.css" rel="stylesheet" />
+
+}
+
+<div class="header">
+    <a href="#menu-left" id="headerDer" class="fa fa-bars"></a>
+    <span id="activityTitle"></span>
+    <a href="#menu-right" id="headerIzq" class="fa fa-user"></a>
+</div>
+
+<p id="pSinPerfil" style="display:none">Seleccione un perfil desde el menú</p>
+<div id="divContainer" class="form-margin">
+    <!-- se carga dinamicamente -->
+</div>
+<div id="divLogout" class="logout-container">
+    <h5></h5>
+</div>
+
+<nav id="menu-left">
+    <ul id="menu-list-left"></ul>
+</nav>
+
+
+<nav id="menu-right">
+    <ul id="menu-list-right">
+        <li onclick="showLogoutDialog();" style="cursor:pointer">
+
+            <span class="">
+                <i class="fa fa-sign-out"></i>
+                &nbsp;Cerrar sesión
+            </span>
+        </li>
+    </ul>
+</nav>
+
+

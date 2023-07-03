@@ -1,0 +1,357 @@
+﻿@section script {
+    <style>
+        .flex-center {
+            align-items: inherit !important;
+        }
+    </style>
+    <script>
+        var divInstances = $('#divInstances');
+
+        // obtiene datos de sesion de la actividad
+        var jsonActivityData = sessionStorage.getItem(CONST_ActivityData);
+        if (jsonActivityData == null) {
+            console.log(CONST_ActivityData + " is NULL");
+            window.location.replace('Activities');
+        }
+        // parsea el json con datos de la actividad a objeto
+        var activityData = JSON.parse(jsonActivityData);
+        if (activityData == null) {
+            console.log("activityData is NULL");
+            window.location.replace('Activities');
+        }
+
+        $(document).ready(function () {
+            // set defaults
+            $('#activityTitle').text(activityData.Description)
+            divInstances.html('');
+
+            // show waiting
+            waitingDialog.show('@Resources.Resource.WaitingMessage', {
+                onShow: function (dialog) {
+                    getInboxAsync(activityData);
+                }
+            });
+        });
+
+        // try to get new trxid and launch the form
+        function launchForm(sender) {
+            var instanceData = new Object();
+            instanceData.OrgId = activityData.OrgId;
+            instanceData.UoId = activityData.UoId;
+            instanceData.ProfId = activityData.ProfId;
+            instanceData.PngId = activityData.PngId;
+            instanceData.VersionId = activityData.VersionId;
+            instanceData.FunctionId = activityData.FunctionId;
+            instanceData.ActId = activityData.ActId;
+            instanceData.SubProId = sender.getAttribute('subproid');
+            instanceData.InsId = sender.getAttribute('insid');
+
+            waitingDialog.show('@Resources.Resource.WaitingMessage', {
+                onShow: function (dialog) {
+                    // get function data and trxid to redirect
+                    redirectToFormAsync(instanceData);
+                }
+            });
+        }
+
+        // try to unlock the instance
+        function UnlockInstance(sender) {
+            var instanceData = new Object();
+            instanceData.OrgId = activityData.OrgId;
+            instanceData.UoId = activityData.UoId;
+            instanceData.ProfId = activityData.ProfId;
+            instanceData.PngId = activityData.PngId;
+            instanceData.VersionId = activityData.VersionId;
+            instanceData.FunctionId = activityData.FunctionId;
+            instanceData.ActId = activityData.ActId;
+            instanceData.SubProId = sender.getAttribute('subproid');
+            instanceData.InsId = sender.getAttribute('insid');
+
+            waitingDialog.show('@Resources.Resource.WaitingMessage', {
+                onShow: function (dialog) {
+                    // get function data and trxid to redirect
+                    UnlockInstance_GetTrxid(instanceData);
+                }
+            });
+        }
+
+        // Get new TrxId
+        function UnlockInstance_GetTrxid(instanceData) {
+            $.ajax({
+                url: CONST_ApiUrl + '/Pectra/GetNewTrxId?OrgId=' + instanceData.OrgId + '&UoId=' + instanceData.UoId + '&ProfId=' + instanceData.ProfId + '&PngId=' + instanceData.PngId + '&VersionId=' + instanceData.VersionId + '&SubProId=' + instanceData.SubProId +
+                                    '&ActId=' + instanceData.ActId + '&FunctionId=' + instanceData.FunctionId + '&InsId=' + instanceData.InsId,
+                type: 'GET',
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader('Authorization', 'Bearer ' + getAccessToken());
+                },
+                success: function (data) {
+                    postUnlockInstanceAsync(data, instanceData.ProfId);
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    switch (jqXHR.status) {
+                        case 0: /* se trata de un caso offline */
+                            // hide waiting
+                            waitingDialog.hide();
+                            // show error
+                            toastr.error(CONST_AlertWarningNotNetworkForm, '', CONST_NotificationDefaultOptions);
+                            break;
+                        case 401:
+                            // significa que el token actual ha caducado. Obtiene un nuevo token valido y rehace la llamada a la api
+                            loginAsync(null).then(function (statusCode) {
+                                if (statusCode == 200) {
+                                    UnlockInstance_GetTrxid(instanceData);
+                                }
+                                else {
+                                    // hide waiting
+                                    waitingDialog.hide();
+
+                                    // show error
+                                    toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                                }
+                            });
+
+                            break;
+                        default:
+                            // hide waiting
+                            waitingDialog.hide();
+
+                            // show error
+                            toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                            break;
+                    }
+                }
+            });
+        }
+
+
+
+        function postUnlockInstanceAsync(trxId, profId) {
+            $.ajax({
+                url: CONST_ApiUrl + '/Pectra/UnlockInstance?trxId=' + trxId + '&ProfId=' + profId,
+                type: 'POST',
+                contentType: "application/json",
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader('Authorization', 'Bearer ' + getAccessToken());
+                },
+                success: function (data) {
+
+                    if (data == "") {
+                        toastr.success('@Resources.Resource.alertSuccessUnlockInstance', '', CONST_NotificationDefaultOptions);
+                        getInboxAsync(activityData);
+                    }
+                    else {
+                        toastr.error(data, '', CONST_NotificationDefaultOptions);
+                        waitingDialog.hide();
+                    }
+
+
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    switch (jqXHR.status) {
+                        case 401:
+                            // significa que el token actual ha caducado. Obtiene un nuevo token valido y rehace la llamada a la api
+                            loginAsync(null).then(function (statusCode) {
+                                if (statusCode == 200) {
+                                    postUnlockInstanceAsync(trxId, profId);
+                                }
+                                else {
+                                    waitingDialog.hide();
+                                }
+                            });
+
+                            break;
+                        default:
+                            waitingDialog.hide();
+                    }
+                }
+            });
+        }
+
+
+        /* Api Calls */
+        function getInboxAsync(activityData) {
+            $.ajax({
+                url: CONST_ApiUrl + '/Pectra/GetInbox?OrgId=' + activityData.OrgId + '&UoId=' + activityData.UoId + '&ProfId=' + activityData.ProfId + '&PngId=' + activityData.PngId + '&VersionId=' + activityData.VersionId + '&ActId=' + activityData.ActId + '&NodeKey=' + activityData.Key,
+                type: 'GET',
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader('Authorization', 'Bearer ' + getAccessToken());
+                },
+                success: function (data) {
+                    var htmlInstances = '';
+
+                    // hide waiting and show logout
+                    waitingDialog.hide();
+
+                    // render response
+                    if (data != null) {
+                        // verifica si debe informar de que existen mas instancias que las visualizadas
+                        if (data.Properties != null && data.Properties.Pages != null) {
+                            if (data.Properties.Pages.ItemsCount < data.Properties.Pages.RecordsCount) {
+                                var messageInfo = '@Resources.Resource.alertInfoExistsMoreElements';
+                                messageInfo = messageInfo.replace('#COUNT#', data.Properties.Pages.ItemsCount);
+
+                                toastr.info(messageInfo, '', CONST_NotificationDefaultOptions);
+                            }
+                        }
+
+                        // recorre cada instancia
+                        if (data.Instances != null && data.Instances.length > 0) {
+                            for (var i = 0; i < data.Instances.length; i++) {
+                                var instance = data.Instances[i];
+                                var onclickDefinition = '';
+                                var iconDefinition = '';
+                                var newSpanDefinition = '';
+                                var startedDate;
+
+                                if (instance.Locked == false) {
+                                    onclickDefinition = 'launchForm(this);';
+                                    iconDefinition = '<i class="fa fa-play fa-color ml-2"></i>';
+                                }
+                                else {
+                                    onclickDefinition = 'UnlockInstance(this);';
+                                    iconDefinition = '<i class="fa fa-lock ml-2 red-text"></i>';
+                                }
+
+                                startedDate = new Date(instance.Started);
+                                if ((Math.abs(new Date() - startedDate) / 3600000) <= 24) {
+                                    newSpanDefinition = '&nbsp;&nbsp;<span class="badge badge-default span-new-instance">@Resources.Resource.lblNewElement</span>';
+                                }
+
+                                htmlInstances +=
+                                    '<div class="card modal-content inbox-item">' +
+                                        '<a onclick="' + onclickDefinition + '" subproid="' + instance.SubProId + '" insid="' + instance.InsId + '">' +
+                                            '<div class="card-body inbox-item-card">' +
+                                                '<div class="inbox-item-flex">' +
+                                                    '<div>' +
+                                                        '<h5 class="mb-2 font-weight-bold dark-grey-text">' +
+                                                            '<strong>#' + instance.InsId + '</strong>' +
+                                                            newSpanDefinition +
+                                                        '</h5>' +
+                                                    '</div>' +
+                                                    '<div>' +
+                                                        '<span>' +
+                                                            iconDefinition +
+                                                        '</span>' +
+                                                    '</div>' +
+                                                '</div>' +
+                                                '<p class="grey-text mb-2">' +
+                                                    instance.Description +
+                                                '</p>' +
+                                                '<p class="dark-grey-text">' +
+                                                    '@Resources.Resource.lblBy <span class="font-weight-bold">' + instance.From.FirstName + ' ' + instance.From.LastName + '</span>, ' + startedDate.toLocaleString() +
+                                                '</p>' +
+                                            '</div>' +
+                                        '</a>' +
+                                    '</div>';
+                            }
+                        }
+                    }
+
+                    if (htmlInstances != '') {
+                        // add all business processes
+                        divInstances.html(htmlInstances);
+                    }
+                    else {
+                        divInstances.html('<h5 class="inbox-empty">@Resources.Resource.lblInboxEmpty</h5>');
+                    }
+
+                    // muestra un mensaje de exito si el activityend de un formulario/conector se realizo correctamente
+                    var showSuccess = sessionStorage.getItem(CONST_ShowSuccess);
+                    if (showSuccess != null) {
+                        if (showSuccess == 'true') {
+                            toastr.success('@Resources.Resource.alertSuccessActivityEndBody', '', CONST_NotificationDefaultOptions);
+                        }
+                        sessionStorage.removeItem(CONST_ShowSuccess);
+                    }
+
+                    // muestra un mensaje de "operacion pendiente" si el activityend de un formulario/conector no se pudo completar por falta de conexion a internet
+                    var showAlertPendingActivityEnd = sessionStorage.getItem(CONST_ShowAlertPendingActivityEnd);
+                    if (showAlertPendingActivityEnd != null) {
+                        if (showAlertPendingActivityEnd == 'true') {
+                            toastr.info('@Resources.Resource.alertPendingActivityEndBody', '', CONST_NotificationDefaultOptions);
+                        }
+                        sessionStorage.removeItem(CONST_ShowAlertPendingActivityEnd);
+                    }
+
+                    // muestra un mensaje de error informando que se requiere conexion la primera vez que se desea ejecutar una actividad
+                    var showRequiredNetworkFirstTime = sessionStorage.getItem(CONST_ShowRequiredNetworkFirstTime);
+                    if (showRequiredNetworkFirstTime != null) {
+                        if (showRequiredNetworkFirstTime == 'true') {
+                            toastr.error(CONST_AlertRequiredNetworkFirstTime, '', CONST_NotificationDefaultOptions);
+                        }
+                        sessionStorage.removeItem(CONST_ShowRequiredNetworkFirstTime);
+                    }
+
+                    // muestra un mensaje de error informando que se requiere conexion siempre
+                    var showRequiredNetworkAlways = sessionStorage.getItem(CONST_ShowRequiredNetworkAlways);
+                    if (showRequiredNetworkAlways != null) {
+                        if (showRequiredNetworkAlways == 'true') {
+                            toastr.error(CONST_AlertWarningNotNetworkForm, '', CONST_NotificationDefaultOptions);
+                        }
+                        sessionStorage.removeItem(CONST_ShowRequiredNetworkAlways);
+                    }
+
+                    // muestra un mensaje de error generico (por ejemplo producido por un error 500 internal server error)
+                    var showError = sessionStorage.getItem(CONST_ShowError);
+                    if (showError != null) {
+                        if (showError == 'true') {
+                            toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                        }
+                        sessionStorage.removeItem(showError);
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    switch (jqXHR.status) {
+                        case 0:
+                            // significa que no hay conexion a la red por lo cual se debe cancelar la operación. Para ello se redirecciona al home y se le informa al usuario
+                            sessionStorage.setItem(CONST_ShowRequiredNetworkAlways, 'true');
+                            window.location.replace('Activities');
+
+                            break;
+                        case 401:
+                            // significa que el token actual ha caducado. Obtiene un nuevo token valido y rehace la llamada a la api
+                            loginAsync(null).then(function (statusCode) {
+                                if (statusCode == 200) {
+                                    getInboxAsync(activityData);
+                                }
+                                else {
+                                    // hide waiting
+                                    waitingDialog.hide();
+
+                                    // show error
+                                    toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                                }
+                            });
+
+                            break;
+                        default:
+                            // hide waiting
+                            waitingDialog.hide();
+
+                            // show error
+                            toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                            break;
+                    }
+                }
+            });
+        }
+    </script>
+}
+
+<div class="header">
+    <a href="Activities" id="headerDer" class="fa fa-arrow-left"></a>
+    <span id="activityTitle"></span>
+    <a href="Inbox" id="headerIzq" class="fa fa-refresh"></a>
+</div>
+
+<div class="form-margin">
+    <div class="modal-dialog cascading-modal inbox-cascading-modal " style="width: 96% !important;">
+        <div class="modal-content inbox-modal-content">
+            <!--    <h5  id="activityTitle" class="inbox-activity-title">&nbsp;</h5> -->
+        </div>
+
+        <div id="divInstances">
+        </div>
+
+    </div>
+</div>

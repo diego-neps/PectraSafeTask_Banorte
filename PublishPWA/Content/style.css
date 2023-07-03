@@ -1,0 +1,190 @@
+/* Your custom styles */
+
+.list-group-item-custom {
+    /*border-top-style: none;*/
+    border-left-style: none;
+    border-right-style: none;
+	/*border-bottom-style: none;*/
+
+    padding-left: 0em;
+    padding-right: 0em;
+
+    color: #495057;
+    font-weight: 400;
+}
+
+.form-margin {
+    margin-top: 1rem;
+}
+
+.business-process-group {
+    margin-top:60px !important;
+}
+
+.waiting {
+    padding-left: 3em;
+    padding-right: 3em;
+}
+
+#toast-container > div {
+  opacity: 1 !important; 
+}
+
+.form-container {
+    width: 90%;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.logout-container {
+    margin-top: 15px;
+    display: none;
+}
+
+.badge-logout {
+    vertical-align: top;
+}
+
+.section-margin {
+    margin-top: 30px;
+}
+
+.select-label {
+    font-size:.8rem;
+    color:#757575;
+}
+
+.select-div {
+    margin-top:0rem;
+}
+
+.inbox-item {
+    margin-bottom:1rem;
+}
+.inbox-item-card {
+    padding:1rem;
+}
+.inbox-item-flex {
+    display:flex;
+    justify-content:space-between;
+}
+.inbox-empty {
+    text-align: center;
+    margin-bottom:2rem;
+}
+.inbox-cascading-modal {
+    margin-top:0rem !important;
+}
+.inbox-modal-content {
+    background-color:#4285f4;
+    margin-bottom:1.5rem;
+}
+.inbox-activity-title {
+    color:white;
+    margin-bottom:0rem;
+    padding:0.5rem;
+    text-align:center;
+}
+.inbox-div-back {
+    pointer-events:all;
+    margin-top:2rem;
+}
+.fa-color {
+    color:#4285f4;
+}
+.span-new-instance {
+    vertical-align:top;
+}
+#divContainer {
+	width:96%;
+}
+nav:not(.mm-menu)
+{
+	display: none;
+}
+.header {
+    background-color:#1967be;
+    height: 50px;
+    font-size: 20px;
+    line-height: 49px;
+}
+.footer
+{
+	background: #777;
+    height: 40px;
+    font-size: 16px;
+    line-height: 40px;
+}
+.header,
+.footer
+{
+    text-align: center;
+	color: #fff;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;	
+	width: 100%;	
+	padding: 0 50px;
+}
+.header.fixed
+{
+	position: fixed;
+	top: 0;
+	left: 0;
+}
+.footer.fixed
+{
+	position: fixed;
+	bottom: 0;
+	left: 0;
+}
+
+.header a
+{
+	display: block;
+	width: 40px;
+	height: 45px;
+	padding: 11px;
+	position: absolute;
+	top: 0;
+	
+}
+
+#headerDer
+{
+    left: 0;
+   margin-left:3px;
+}
+
+#headerIzq
+{
+    right: 0;
+   margin-right:3px;
+}
+
+
+.header a:before,
+.header a:after
+{
+	display: block;
+	height: 2px;
+    margin-top:3px;
+    color:#ffffff;
+}
+.header a span
+{
+	background: #fff;
+	display: block;
+	height: 2px;
+	margin: 4px 0;
+}
+
+.mm-navbar__title {
+
+    color:#000000!important;
+    font-weight: 400;
+}
+
+/*Hide password reveal on IE10+*/
+::-ms-reveal {
+    display: none;
+}

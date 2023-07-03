@@ -1,0 +1,152 @@
+﻿@section script {
+    <script>
+        /* Prompt */
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            btnA2HS.style.display = '';
+        });
+        btnA2HS.addEventListener('click', (e) => {
+            btnA2HS.style.display = 'none';
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                deferredPrompt = null;
+            });
+        });
+
+        // determina si debe mostrar el login o el home
+        var userToken = getAccessToken();
+        if (userToken != null && $.trim(userToken) != '') {
+            // evita que la pagina actual quede en el historial del navegador
+            window.location.replace('Activities');
+        }
+
+        // configurations
+        $('#divLayout').css('height', '100vh');
+
+         // login button
+        $("#btnLogin").click(function () {
+            login();
+        });
+
+        function login() {
+            // get form controls
+            var txtUserName = $('#txtUserName');
+            var txtPassword = $('#txtPassword');
+
+            // validation
+            if ($.trim(txtUserName.val()) == '') {
+                var notificationDefaultOptions = CONST_NotificationDefaultOptions;
+                notificationDefaultOptions.preventDuplicates = true;
+
+                toastr.error('@Resources.Resource.alertRequiredUserName', '', notificationDefaultOptions);
+                txtUserName.focus();
+                return;
+            }
+            if ($.trim(txtPassword.val()) == '') {
+                var notificationDefaultOptions = CONST_NotificationDefaultOptions;
+                notificationDefaultOptions.preventDuplicates = true;
+
+                toastr.error('@Resources.Resource.alertRequiredPassword', '', notificationDefaultOptions);
+                txtPassword.focus();
+                return;
+            }
+
+            // set request
+            var requestData = { user: txtUserName.val(), password: txtPassword.val() };
+
+            // show waiting
+            waitingDialog.show('@Resources.Resource.WaitingMessage', {
+                onShow: function (dialog) {
+                    // login call
+                    loginAsync(requestData).then(function (statusCode) {
+                        switch (statusCode) {
+                            case 0:
+                                // hide waiting
+                                waitingDialog.hide();
+
+                                // se trata de un error de conexion (modo offline)
+                                toastr.error('@Resources.Resource.alertLoginNotNetworkFirstLogin', '', CONST_NotificationDefaultOptions);
+                                break;
+                            case 200:
+                                // redirect (no back history)
+                                window.location.replace('Activities');
+
+                                break;
+                            case 401:
+                                // hide waiting
+                                waitingDialog.hide();
+
+                                // show error
+                                toastr.error('@Resources.Resource.alertUserOrPasswordIncorrect', '', CONST_NotificationDefaultOptions);
+                                break;
+                            default:
+                                // hide waiting
+                                waitingDialog.hide();
+
+                                // show error
+                                toastr.error(CONST_AlertErrorBody, '', CONST_NotificationDefaultOptions);
+                                break;
+                        }
+                    });
+                }
+            });
+        };
+        function validLogin(e) {
+            if (e.keyCode == 13) { login(); }
+        }
+
+        //Show/hide password
+        var isTouchDevice = 'ontouchstart' in document.documentElement;
+        $("#iTxtPassword").mousedown(function (event) {
+            if (isTouchDevice == false) {
+                $('#txtPassword').attr("type", "text")
+            }
+        });
+        $("#iTxtPassword").mouseup(function (event) {
+            if (isTouchDevice == false) {
+                $('#txtPassword').attr("type", "password")
+            }
+        });
+        $('#iTxtPassword').on('touchstart', function () {
+            if (isTouchDevice) {
+                $('#txtPassword').attr("type", "text")
+            }
+        });
+        $('#iTxtPassword').on('touchend', function () {
+            if (isTouchDevice) {
+                $('#txtPassword').attr("type", "password")
+            }
+        });
+    </script>
+}
+
+<!-- Material form login -->
+<div class="animated fadeIn">
+    <p class="h4 text-center mb-5">@Resources.Resource.LoginTitleWelcome</p>
+
+    <!-- Material input user -->
+    <div class="md-form">
+        <i class="fa fa-user prefix grey-text"></i>
+        <input type="text" id="txtUserName" class="form-control">
+        <label for="txtUserName">@Resources.Resource.LoginUserName</label>
+    </div>
+    <!-- Material input password -->
+    <div class="md-form">
+        <i class="fa fa-lock prefix grey-text"></i>
+        <input type="password" id="txtPassword" class="form-control" onkeypress="validLogin(event)">
+        <label for="txtPassword">@Resources.Resource.LoginPassword</label>
+        <i class="fa fa-eye grey-text" id="iTxtPassword" style="float: right; cursor: pointer; top: -38px; position: relative"></i>
+    </div>
+
+    <div class="text-center mt-5">
+        <button id="btnLogin" class="btn btn-primary" type="button" style="width:100%">@Resources.Resource.LoginButton</button>
+    </div>
+    <div class="text-center">
+        <button id="btnA2HS" class="btn btn-default" type="button" style="width:100%; display:none">
+            <i class="fa fa-download mr-1"></i>
+            @Resources.Resource.A2HSButton
+        </button>
+    </div>
+</div>
