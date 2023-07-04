@@ -310,6 +310,86 @@ namespace PectraForms.WebApplication.BackEnd.API.Helpers
             }
         }
 
+        public static string AttributeSetValue(string pszAtrId, string pszAtrValue, string pszSetAttributes)
+        {
+            string szXPath;
+            XmlNode nodSetAttr, nodAttr;
+            XmlDocument xmlDom = new XmlDocument();
+            try
+            {
+                // - Limita el largo de los atributos
+                // --------------------------------------------------------------------------------
+                pszAtrValue = pszAtrValue.Substring(0, (pszAtrValue.Length > 250 ? 250 : pszAtrValue.Length));
+
+                pszAtrValue = RemoveSpecialCharacters(pszAtrValue);
+
+                // - Valida si ya hay creado un Nodo Root, si no esta, lo crea
+                // --------------------------------------------------------------------------------
+                try
+                {
+                    xmlDom.LoadXml(pszSetAttributes);
+                    nodSetAttr = xmlDom.SelectSingleNode("SetAttributes");
+                }
+                catch
+                {
+                    nodSetAttr = xmlDom.CreateElement("SetAttributes");
+                }
+                // - Valida si ya existe el Atributo, si existe lo elimina
+                // --------------------------------------------------------------------------------
+                szXPath = string.Format("Attribute[AtrId=\'{0}\']", pszAtrId);
+                if (nodSetAttr.SelectSingleNode(szXPath) != null)
+                {
+                    nodSetAttr.RemoveChild(nodSetAttr.SelectSingleNode(szXPath));
+                }
+                #region [ - Crea el nodo Attribute - ]
+                // --------------------------------------------------------------------------------
+                // - Crea el nodo del Atributo, con la siguiente Estructura
+                // 
+                //   <Attribute>
+                //     <AtrId/>
+                //     <AtrValue/>
+                //     <AtrExtendedValue>
+                //       <ContentType />
+                //       <Data />
+                //     </AtrExtendedValue>
+                //   </Attribute>
+                // --------------------------------------------------------------------------------
+                //- Attribute
+                nodAttr = xmlDom.CreateElement("Attribute");
+                //- AtrId
+                nodAttr.AppendChild(xmlDom.CreateElement("AtrId"));
+                //- AtrValue
+                nodAttr.AppendChild(xmlDom.CreateElement("AtrValue"));
+                //- AtrExtendedValue
+                nodAttr.AppendChild(xmlDom.CreateElement("AtrExtendedValue"));
+                //- AtrExtendedValue/ContentType
+                nodAttr.SelectSingleNode("AtrExtendedValue").AppendChild(xmlDom.CreateElement("ContentType"));
+                //- AtrExtendedValue/Data
+                nodAttr.SelectSingleNode("AtrExtendedValue").AppendChild(xmlDom.CreateElement("Data"));
+                #endregion
+
+                // - Inserta los Valores
+                // --------------------------------------------------------------------------------
+                nodAttr.SelectSingleNode("AtrId").InnerText = pszAtrId;
+                nodAttr.SelectSingleNode("AtrValue").InnerText = pszAtrValue;
+                nodAttr.SelectSingleNode("AtrExtendedValue/ContentType").InnerText = "bin.base64";
+
+                nodSetAttr.AppendChild(nodAttr);
+                xmlDom.AppendChild(nodSetAttr);
+
+                return xmlDom.OuterXml;
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                nodSetAttr = null;
+                nodAttr = null;
+                xmlDom = null;
+            }
+        }
 
         /// <summary>
         /// Attributes the set value.
