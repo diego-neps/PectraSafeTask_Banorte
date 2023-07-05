@@ -15,10 +15,16 @@ namespace PectraForms.WebApplication.BackEnd.API.Models.FormulariosRegistrados
     {
         public List<PageFormData> Pages { get; set; }
     }
+    //public class Fields
+    //{
+    //    public List<PageFormData> Pages { get; set; }
+    //}
 
     public class PageFormData
     {
         public List<ElementsFormData> Elements { get; set; }
+
+        //public List<Elements2ndLevelFormData> Elements2ndLevel { get; set; }
     }
 
     public class ElementsFormData
