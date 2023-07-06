@@ -46,11 +46,13 @@ namespace PectraForms.WebApplication.BackEnd.API.Helpers
         #endregion
 
         #region [- ActivityEnd -]
-        public static string ActivityEnd(string pszTrxId, string pszSetAttributes,
+        public static string ActivityEnd(long plTrxId, string pszSetAttributes,
                                     long plTrxIdExt, long plPngId, long plSubProId, long plActId, long plInsId, long plPngInsId,
                                     string pszUsrId, string pszInsOrigin, long plPriority, bool pbAttachmentsDocuments)
         {
-            ActivityEndSecureRequest oRequest;
+
+
+            ActivityEndRequest oRequest;
             #region [ - Attributes - ]
             XmlDocument oDom = new XmlDocument();
 
@@ -71,8 +73,8 @@ namespace PectraForms.WebApplication.BackEnd.API.Helpers
                 plstSetAttributes.Add(oAtt);
             }
             #endregion
-            oRequest = new ActivityEndSecureRequest();
-            oRequest.SecureTrxID = Guid.Parse(pszTrxId);
+            oRequest = new ActivityEndRequest();
+            oRequest.TrxID = plTrxId;
             oRequest.Attributes = plstSetAttributes;
             oRequest.TrxIdExt = plTrxIdExt;
             oRequest.PngId = plPngId;
@@ -116,31 +118,48 @@ namespace PectraForms.WebApplication.BackEnd.API.Helpers
             oRequest.MessagePriority = msgPriority;
             oRequest.AttachmentsDocuments = pbAttachmentsDocuments;
 
-            OBPIClient m_oOBPIClient = new OBPIClient("BasicHttpBinding_IPectraOBPIService");
+            try
+            {
+                OBPIClient m_oOBPIClient = new OBPIClient("BasicHttpBinding_IPectraOBPIService");
 
-            // Open the client
-            OpenOBPIClient(m_oOBPIClient);
+                // Open the client
+                OpenOBPIClient(m_oOBPIClient);
 
-            // Invoke  method
-            ActivityEndResponse oResponse = m_oOBPIClient.ActivityEndSecure(oRequest);
+                // Invoke  method
+                ActivityEndResponse oResponse = m_oOBPIClient.ActivityEnd(oRequest);
 
-            // Close the client
-            CloseOBPIClient(m_oOBPIClient);
+                // Close the client
+                CloseOBPIClient(m_oOBPIClient);
 
-            // Translate
-            string strReturn = oResponse.GUID;
+                // Translate
+                string strReturn = oResponse.GUID;
 
-            // Liberacion de objetos
-            oResponse = null;
+                // Liberacion de objetos
+                oResponse = null;
 
-            //- Return the value
-            return strReturn;
-
+                //- Return the value
+                return strReturn;
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                oRequest = null;
+            }
         }
-
-        public static string ActivityEnd(string pszTrxId, string pszSetAttributes)
+        public static string ActivityEnd(long plTrxId, string pszSetAttributes)
         {
-            return ActivityEnd(pszTrxId, pszSetAttributes, 0, 0, 0, 0, 0, 0, string.Empty, string.Empty, 3, false);
+            try
+            {
+
+                return ActivityEnd(plTrxId, pszSetAttributes, 0, 0, 0, 0, 0, 0, string.Empty, string.Empty, 3, false);
+            }
+            catch
+            {
+                throw;
+            }
         }
         #endregion
 

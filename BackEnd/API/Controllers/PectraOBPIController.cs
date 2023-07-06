@@ -110,7 +110,9 @@ namespace PectraForms.WebApplication.BackEnd.API.Controllers
             foreach (PectraAttribute attr in request.attributes)
                 setAttributes = PectraOBPIHelper.AttributeSetValue(attr.AtrId, attr.AtrValue, setAttributes, attr.ExtendedValue);
 
-            return Ok(PectraOBPIHelper.ActivityEnd(request.trxId, setAttributes, 0, 0, 0, 0, 0, 0, string.Empty, string.Empty, 3, false));
+            long trxId = long.Parse(request.trxId);
+
+            return Ok(PectraOBPIHelper.ActivityEnd(trxId, setAttributes, 0, 0, 0, 0, 0, 0, string.Empty, string.Empty, 3, false));
         }
 
         public class ActivityEndApiRequest : BaseApiRequest
@@ -134,7 +136,10 @@ namespace PectraForms.WebApplication.BackEnd.API.Controllers
                 setAttributes = PectraOBPIHelper.AttributeSetValue(attr.AtrId, attr.AtrValue, setAttributes, attr.ExtendedValue);
 
             string szRet = "";
-            szRet = PectraOBPIHelper.ActivityEnd(request.trxId, setAttributes, request.trxIdExt, request.pngId, request.subProId, request.actId,
+
+            long trxId = long.Parse(request.trxId);
+
+            szRet = PectraOBPIHelper.ActivityEnd(trxId, setAttributes, request.trxIdExt, request.pngId, request.subProId, request.actId,
                 request.insId, request.pngInsId, request.usrId, request.insOrigin, request.priority, request.attachmentsDocuments);
             return Ok(szRet);
         }
